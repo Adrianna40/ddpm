@@ -9,10 +9,13 @@ import numpy as np
 
 import time 
 
-from globals_var import * 
-from unet import UNet, SimpleUnet
-from diffusion import sample_timestep, init_forward_variables
 
+from globals_var import * 
+from unet import UNet
+from diffusion import sample, init_forward_variables
+
+
+path_to_results = 'output'
 # load trained model 
 test_model = torch.load(f'{path_to_results}/model.bin')
 model_instance = UNet(UNET_CHANNEL_BASE, UNET_CHANNEL_MULT, UNET_DEPTH)
@@ -29,7 +32,7 @@ num_channels = 3
 init_forward_variables(TIMESTEPS)
 
 # generate image from noise 
-samples = sample(model, IMG_SIZE, batch_size=1, channels=num_channels)
+samples = sample(model_instance, IMG_SIZE, 1, num_channels, TIMESTEPS)
 # plt.imshow(reverse_transforms(samples[-1][0]))    # final image 
 
 fig = plt.figure()

@@ -2,6 +2,7 @@ import torch
 import torch.nn.functional as F
 import time 
 import matplotlib.pyplot as plt
+from tqdm.auto import tqdm
 
 def get_linear_beta_schedule(timesteps: int) -> torch.Tensor:
     beta_start = 0.0001
@@ -68,7 +69,7 @@ def p_sample(model, x, t, t_index):
 
 # Algorithm 2 but save all images:
 @torch.no_grad()
-def p_sample_loop(model, shape):
+def p_sample_loop(model, shape, timesteps):
     device = next(model.parameters()).device
 
     b = shape[0]
@@ -79,12 +80,12 @@ def p_sample_loop(model, shape):
     start = time.time()
     for i in tqdm(reversed(range(0, timesteps)), desc='sampling loop time step', total=timesteps):
         img = p_sample(model, img, torch.full((b,), i, device=device, dtype=torch.long), i)
-        imgs.append(img.cpu().numpy())
+        imgs.append(img.cpu())
     end = time.time()
     print('image generation took', end-start)
     return imgs
 
 @torch.no_grad()
-def sample(model, image_size, batch_size=16, channels=3):
-    return p_sample_loop(model, shape=(batch_size, channels, image_size, image_size))
+def sample(model, image_size, batch_size, channels, timesteps):
+    return p_sample_loop(model, (batch_size, channels, image_size, image_size), timesteps)
     
