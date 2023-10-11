@@ -13,7 +13,7 @@ import json
 import os 
 
 from unet import UNet
-from diffusion import q_sample, p_losses, init_forward_variables
+from diffusion import Diffusion
 from globals_var import * 
 import globals_var
 
@@ -34,7 +34,7 @@ data_transforms = transforms.Compose([
     transforms.Lambda(lambda t: (t * 2) - 1), # Scale between [-1, 1] 
 ])
 
-init_forward_variables(TIMESTEPS)
+diffusion_instance = Diffusion(TIMESTEPS)
 train = torchvision.datasets.Flowers102(
     root=".", download=True, split="test", transform=data_transforms
 )  # train and test are switched
@@ -63,7 +63,7 @@ for epoch in range(EPOCHS):
         batch_size = batch.shape[0]
         t = torch.randint(0, TIMESTEPS, (batch_size,), device=device).long()
         epoch_timesteps.append(t.tolist())
-        loss_full, loss = p_losses(model, batch, t)
+        loss_full, loss = diffusion_instance.p_losses(model, batch, t)
         loss_per_img = [img_loss.mean().tolist() for img_loss in loss_full]
         epoch_loss.append(loss_per_img)
 

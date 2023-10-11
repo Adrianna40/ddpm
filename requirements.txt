@@ -4,4 +4,5 @@ Pillow>=9.4.0
 scipy>=1.10.0
 torch>=2.0.1
 torchvision>=0.15.2a0
-
+tqdm>=4.66.1
+pandas>=2.0.3
