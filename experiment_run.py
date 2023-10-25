@@ -19,7 +19,7 @@ import globals_var
 
 
 def save_config_to_json(path, config_module):
-    module_dict = {key: value for key, value in config_module.__dict__.items() if not key.startswith('_')}
+    module_dict = {key: value for key, value in globals_var.__dict__.items() if (not key.startswith('_')) and (type(value) in [int, list])}
     with open(f'{path}/config.json', 'w') as fp:
         json.dump(module_dict, fp)
 
@@ -27,12 +27,6 @@ path_to_results = "output"
 os.makedirs(path_to_results, exist_ok=True)
 save_config_to_json(path_to_results, globals_var)
 
-data_transforms = transforms.Compose([
-    transforms.CenterCrop(500),
-    transforms.Resize(IMG_SIZE),
-    transforms.ToTensor(), # tensor with values [0, 1]
-    transforms.Lambda(lambda t: (t * 2) - 1), # Scale between [-1, 1] 
-])
 
 diffusion_instance = Diffusion(TIMESTEPS)
 train = torchvision.datasets.Flowers102(

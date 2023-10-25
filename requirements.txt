@@ -6,3 +6,5 @@ torch>=2.0.1
 torchvision>=0.15.2a0
 tqdm>=4.66.1
 pandas>=2.0.3
+torchmetrics>=1.2.0
+torch-fidelity>=0.3.0
