@@ -5,10 +5,10 @@ KERNEL_SIZE = 3
 BATCH_SIZE = 128
 # image size has to be % 2^ number_of_downscaling == 0 
 IMG_SIZE = 64
-TIMESTEPS = 1000
+TIMESTEPS = 300
 UNET_CHANNEL_BASE = 64
 UNET_CHANNEL_MULT = [1,2,4,8,16]
-UNET_DEPTH = 2
+UNET_DEPTH = 1
 EPOCHS = 100
 
 data_transforms = transforms.Compose([

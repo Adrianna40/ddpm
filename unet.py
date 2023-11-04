@@ -109,3 +109,21 @@ class UNet(nn.Module):
         x = self.last_conv(x)
         return x
 
+class ModelCombined(nn.Module):
+    def __init__(self, model_content, model_fast, diffusion):
+        super().__init__()
+        self.model_content = model_content
+        self.model_fast = model_fast
+        self.diffusion = diffusion 
+
+    def forward(self, x, time):
+        """
+        This method should be only used for sampling. It assumes that time is an uniform vector. 
+        """
+        t = time[0]
+        snr = self.diffusion.snr[int(t)]
+        if snr <= 0.01 or snr > 1:
+            return self.model_fast(x, time)
+        else:
+            return self.model_content(x, time)
+

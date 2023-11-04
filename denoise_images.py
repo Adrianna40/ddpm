@@ -27,10 +27,10 @@ def test_denoising(batch, model, timestep, diffusion):
 
 path_to_results = 'output'
 # load trained model 
-test_model = torch.load(f'{path_to_results}/model1.bin')
-model_instance = UNet(UNET_CHANNEL_BASE, UNET_CHANNEL_MULT, UNET_DEPTH)
+test_model = torch.load(f'{path_to_results}/model_fast.bin')
+model_instance = UNet(64, [1, 2, 4, 8, 16], 1)
 model_instance.load_state_dict(test_model)
-diffusion_instance = Diffusion(TIMESTEPS)
+diffusion = Diffusion(TIMESTEPS)
 
 num_channels = 3
 
@@ -42,8 +42,20 @@ dataloader = DataLoader(test, batch_size=1, shuffle=True, drop_last=True)
 batch = next(iter(dataloader))
 batch = batch[0]
 
-test_denoising(batch, model_instance, 50, diffusion_instance)
-test_denoising(batch, model_instance, 100, diffusion_instance)
-test_denoising(batch, model_instance, 200, diffusion_instance)
-test_denoising(batch, model_instance, 500, diffusion_instance)
-test_denoising(batch, model_instance, 999, diffusion_instance)
+plt.axis('off')
+num_images = 10
+stepsize = int(TIMESTEPS/num_images)
+
+fig, axes = plt.subplots(2, num_images, figsize=(30, 5))
+
+
+for idx in reversed(range(TIMESTEPS)):
+    if idx % stepsize == 0:
+        t = torch.Tensor([idx]).type(torch.int64)
+        forward_sample = diffusion.q_sample(batch, t, noise=None, clipping=False)
+        img = diffusion.p_sample_loop_denoise(forward_sample, model_instance, idx, clipping=True)
+        plot_id = int(idx // stepsize)
+        axes[0][plot_id].imshow(reverse_transforms(img[0].cpu()))
+        axes[1][plot_id].imshow(reverse_transforms(forward_sample[0].cpu()))
+plt.savefig(f'{path_to_results}/forward_backward.png')
+    

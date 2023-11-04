@@ -63,13 +63,12 @@ for epoch in range(EPOCHS):
 
         if step == 0:
             print(f"Loss for step {step}: {loss.item()}")
-
         loss.backward()
         optimizer.step()
     epochs_results[epoch] = {'timesteps':epoch_timesteps, 'losses':epoch_loss}
+
     with open(f'{path_to_results}/epochs.json', 'w') as fp:
         json.dump(epochs_results, fp)
-    if epoch % 10 == 0:
-        torch.save(model.state_dict(), f'{path_to_results}/model.bin')
-        print('model saved')
+torch.save(model.state_dict(), f'{path_to_results}/model_fast.bin')
+print('model saved')
 

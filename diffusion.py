@@ -23,7 +23,7 @@ class Diffusion:
         self.snr = 1.0 / (1 - self.alphas_cumprod) - 1
 
     # forward diffusion
-    def q_sample(self, x_start, t, noise=None):
+    def q_sample(self, x_start, t, noise=None, clipping=False):
         if noise is None: 
             noise = get_noise(x_start.shape).to(x_start.device)
         sqrt_alphas_cumprod_t = extract(self.sqrt_alphas_cumprod, t, x_start.shape)
@@ -31,7 +31,8 @@ class Diffusion:
             self.sqrt_one_minus_alphas_cumprod, t, x_start.shape
         )
         noised_img = sqrt_alphas_cumprod_t * x_start + sqrt_one_minus_alphas_cumprod_t * noise
-        noised_img = torch.clip(noised_img, min=-1.0, max=1.0) 
+        if clipping: 
+            noised_img = torch.clip(noised_img, min=-1.0, max=1.0) 
         return noised_img
 
     # backward diffusion loss 
@@ -47,7 +48,7 @@ class Diffusion:
 
     # source https://colab.research.google.com/github/huggingface/notebooks/blob/main/examples/annotated_diffusion.ipynb#scrollTo=_s-Al2lJ2c8T
     @torch.no_grad()
-    def p_sample(self, model, x, t, t_index):
+    def p_sample(self, model, x, t, t_index, clipping=False):
         device = next(model.parameters()).device
         betas_t = extract(self.betas, t, x.shape)
         sqrt_one_minus_alphas_cumprod_t = extract(
@@ -63,73 +64,58 @@ class Diffusion:
         )
 
         if t_index == 0:
-            return model_mean
+            img = model_mean 
         else:
             posterior_variance_t = extract(self.posterior_variance, t, x.shape)
             # posterior_log_variance_t = extract(self.posterior_log_variance_clipped, t, x.shape)
     
             noise = get_noise(x.shape).to(device)
             # Algorithm 2 line 4:
-            return model_mean + torch.sqrt(posterior_variance_t) * noise 
+            img = model_mean + torch.sqrt(posterior_variance_t) * noise 
+        if clipping: 
+            img = torch.clip(img, min=-1.0, max=1.0)
+        return img 
 
 
-    # Algorithm 2 but save all images:
+    
     @torch.no_grad()
-    def p_sample_loop(self, model, shape, timesteps):
+    def p_sample_loop(self, model, shape, timesteps, img_noisy=None, clipping=False):
+        """
+        saves image at each step of denoising 
+        """
         device = next(model.parameters()).device
-
         b = shape[0]
-        # start from pure noise (for each example in the batch)
-        img = get_noise(shape).to(device)
-        imgs = []
 
+        if img_noisy==None: 
+            img = get_noise(shape).to(device)
+
+        imgs = []
         start = time.time()
         for i in tqdm(reversed(range(0, timesteps)), desc='sampling loop time step', total=timesteps):
-            img = self.p_sample(model, img, torch.full((b,), i, device=device, dtype=torch.long), i)
-    
-            img = torch.clip(img, min=-1.0, max=1.0)
+            img = self.p_sample(model, img, torch.full((b,), i, device=device, dtype=torch.long), i, clipping)
             imgs.append(img.cpu())
         end = time.time()
         print('image generation took', end-start)
         return imgs
     
     @torch.no_grad()
-    def p_sample_loop_denoise(self, noisy_img, model, timestep):
+    def p_sample_loop_denoise(self, noisy_img, model, timestep, clipping=False):
+        """
+        backward loop, but starts from any timestep 
+        """
         device = next(model.parameters()).device
         shape = noisy_img.shape
         b = shape[0]
 
         for i in tqdm(reversed(range(0, timestep)), desc='sampling loop time step', total=timestep):
-            noisy_img = self.p_sample(model, noisy_img, torch.full((b,), i, device=device, dtype=torch.long), i)
-            noisy_img = torch.clip(noisy_img, min=-1.0, max=1.0)
+            noisy_img = self.p_sample(model, noisy_img, torch.full((b,), i, device=device, dtype=torch.long), i, clipping)
+            # noisy_img = torch.clip(noisy_img, min=-1.0, max=1.0)
       
         return noisy_img
 
     @torch.no_grad()
     def sample(self, model, image_size, batch_size, channels, timesteps):
         return self.p_sample_loop(model, (batch_size, channels, image_size, image_size), timesteps)
-    
-    @torch.no_grad()
-    def p_sample_2models(self, big_model, small_model, shape, timesteps):
-        device = next(big_model.parameters()).device
-
-        b = shape[0]
-        # start from pure noise (for each example in the batch)
-        img = get_noise(shape).to(device)
-        imgs = []
-
-        start = time.time()
-        for i in tqdm(reversed(range(0, timesteps)), desc='sampling loop time step', total=timesteps):
-            if i < 200 or i >= 600: 
-                model = small_model 
-            else:
-                model = big_model
-            img = self.p_sample(model, img, torch.full((b,), i, device=device, dtype=torch.long), i)
-            img = torch.clip(img, min=-1.0, max=1.0) 
-            imgs.append(img.cpu())
-        end = time.time()
-        print('image generation took', end-start)
-        return imgs
 
 
 def get_linear_beta_schedule(timesteps: int) -> torch.Tensor:
